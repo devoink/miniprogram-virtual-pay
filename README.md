@@ -18,14 +18,16 @@ yarn add miniprogram-virtual-pay
 # 或: npm install miniprogram-virtual-pay
 ```
 
-请同时安装 peer 依赖（用于 TypeScript 全局类型 `wx` / `WechatMiniprogram.*`）：
+**仅需安装本包即可**，运行时不依赖其它 npm 包（微信客户端提供全局 `wx`）。
+
+若你在 **TypeScript** 中开发，且项目里还没有微信小程序的全局类型，可再安装（多数微信开发者工具 / UniApp 模板工程已自带，无需重复装）：
 
 ```bash
 yarn add -D miniprogram-api-typings
 # 或: npm install miniprogram-api-typings --save-dev
 ```
 
-本库类型通过 `/// <reference types="miniprogram-api-typings" />` 引用；你的项目也需安装 `miniprogram-api-typings` 以便解析。
+本库源码通过 `/// <reference types="miniprogram-api-typings" />` 关联 `WechatMiniprogram.*` 等类型；未装该包时，仅影响你侧 TS 能否解析这些全局类型，不影响 JS 运行。
 
 ## 环境可用性说明
 
@@ -42,31 +44,31 @@ yarn add -D miniprogram-api-typings
 ### 基础示例
 
 ```ts
-import { MpWeixinVirtualPay } from 'miniprogram-virtual-pay'
+import { MpWeixinVirtualPay } from "miniprogram-virtual-pay";
 
 const virtualPay = new MpWeixinVirtualPay({
   debug: false,
   prepareVirtualPayment: async () => {
     // 在此请求你的服务端，拿到微信虚拟支付所需的五元组
-    const res = await yourApi.createVirtualPayOrder()
+    const res = await yourApi.createVirtualPayOrder();
     return {
       orderid: res.orderid,
       mode: res.mode,
       paySig: res.paySig,
       signData: res.signData, // 对象或已是 JSON 字符串均可
       signature: res.signature,
-    }
+    };
   },
-})
+});
 
 try {
-  const result = await virtualPay.createVirtualPayment()
+  const result = await virtualPay.createVirtualPayment();
   // result 为微信 success 回调入参 WechatMiniprogram.RequestCommonPaymentSuccessCallbackResult
 } catch (err) {
-  const failure = MpWeixinVirtualPay.getFailure(err)
-  if (failure?.status === 'canceled') {
+  const failure = MpWeixinVirtualPay.getFailure(err);
+  if (failure?.status === "canceled") {
     // 用户取消
-  } else if (failure?.status === 'not_supported') {
+  } else if (failure?.status === "not_supported") {
     // 当前环境不支持
   } else {
     // 失败或其它
@@ -81,12 +83,12 @@ try {
 ```ts
 new MpWeixinVirtualPay({
   beforePrepare: async () => {
-    await ensureLogin()
+    await ensureLogin();
   },
   prepareVirtualPayment: async () => {
     /* ... */
   },
-})
+});
 ```
 
 ### 支付成功后轮询订单 `pollOrder`
@@ -102,27 +104,27 @@ new MpWeixinVirtualPay({
     intervalMs: 1500, // 默认 1500
     maxAttempts: 60, // 默认 60，最后一轮仍 next 则报「订单状态查询超时」
     query: async ({ orderid, end, next }) => {
-      const status = await yourApi.getOrderStatus(orderid)
-      if (status === 'paid') {
-        end()
+      const status = await yourApi.getOrderStatus(orderid);
+      if (status === "paid") {
+        end();
       } else {
-        next()
+        next();
       }
     },
   },
-})
+});
 ```
 
 未配置 `pollOrder` 时，微信 `success` 后即 resolve，不再轮询。
 
 ## API 摘要
 
-| 项 | 说明 |
-| --- | --- |
-| `new MpWeixinVirtualPay(options)` | 构造实例；构造时会读取 `wx.getAppBaseInfo()` / `wx.getDeviceInfo()`。 |
-| `createVirtualPayment()` | 发起虚拟支付；成功返回微信 `success` 结果；失败 reject，可用 `getFailure` 读取详情。 |
-| `MpWeixinVirtualPay.getFailure(err)` | 若为本库包装的 Error，返回 `VirtualPaymentFailure`，否则 `undefined`。 |
-| `MpWeixinVirtualPay.isUserCancelError(err)` | 是否用户取消（含 `status === 'canceled'` 或 `errCode === -2`）。 |
+| 项                                          | 说明                                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `new MpWeixinVirtualPay(options)`           | 构造实例；构造时会读取 `wx.getAppBaseInfo()` / `wx.getDeviceInfo()`。                |
+| `createVirtualPayment()`                    | 发起虚拟支付；成功返回微信 `success` 结果；失败 reject，可用 `getFailure` 读取详情。 |
+| `MpWeixinVirtualPay.getFailure(err)`        | 若为本库包装的 Error，返回 `VirtualPaymentFailure`，否则 `undefined`。               |
+| `MpWeixinVirtualPay.isUserCancelError(err)` | 是否用户取消（含 `status === 'canceled'` 或 `errCode === -2`）。                     |
 
 ### `VirtualPaymentFailure`
 
